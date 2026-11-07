@@ -118,11 +118,25 @@
   .modal .tagline{color:#cfd6e2;font-size:1.05rem;margin-bottom:24px}
   .modal h5{font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--accent2);margin:28px 0 10px}
   .modal .desc p{color:var(--muted);margin-bottom:14px}
-  .results{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+  .results{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
   .result{background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
   .result b{display:block;font-family:"Space Grotesk",sans-serif;font-size:1.35rem}
   .result span{font-size:.8rem;color:var(--muted)}
   .modal .proj-links{margin-top:28px}
+  .modal h4{font-size:1rem;margin:22px 0 10px;color:var(--text)}
+  .modal ul.pts{color:var(--muted);padding-left:20px;display:grid;gap:10px;margin-bottom:6px}
+  .modal ul.pts b{color:#dbe2ee;font-weight:600}
+  .modal ul.pts ul{margin-top:8px;padding-left:18px;display:grid;gap:8px}
+  .tbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;margin:4px 0 6px}
+  .mtable{width:100%;border-collapse:collapse;font-size:.9rem}
+  @media (max-width:600px){.mtable{font-size:.8rem}.mtable th,.mtable td{padding:9px 8px}.mtable th{font-size:.62rem;letter-spacing:.06em}}
+  .mtable th,.mtable td{padding:10px 14px;text-align:left;border-bottom:1px solid var(--line)}
+  .mtable tr:last-child td{border-bottom:0}
+  .mtable th{background:var(--bg2);font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600}
+  .mtable td:first-child{color:#cfd6e2}
+  .mtable td:not(:first-child),.mtable th:not(:first-child){text-align:right;font-variant-numeric:tabular-nums}
+  .mtable .win{color:var(--green, #34d27b);font-weight:600}
+  .note{font-size:.84rem;color:var(--muted);border-left:2px solid #ffb84d;padding:8px 12px;background:rgba(255,184,77,.06);border-radius:0 8px 8px 0;margin-top:10px}
   .proj{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;display:flex;flex-direction:column;transition:.3s}
   .proj:hover{transform:translateY(-6px);border-color:#3a4558;box-shadow:0 20px 50px rgba(0,0,0,.35)}
   .proj-img{aspect-ratio:16/9;background:linear-gradient(135deg,#1f6bff33,#7b4dff22),#1a202b;display:grid;place-items:center;font-family:"Space Grotesk",sans-serif;font-size:2.6rem;font-weight:700;color:#ffffff30;overflow:hidden}
@@ -432,22 +446,65 @@ const projects = [
   },
   {
     num:"02", cats:["sde","ml"], title:"Intelligent Invoice Processing Pipeline",
-    tagline:"An event-driven, serverless AWS pipeline that turns raw invoice PDFs and photos into validated, queryable financial data, with AI extraction, automated validation and human-in-the-loop review.",
-    flow:["S3","Step Functions","Textract / Bedrock","Pydantic","DynamoDB","Athena"],
-    desc:[
-      "Businesses still process thousands of invoices by hand: reading PDFs, typing vendor details and line items into systems, and catching errors after they’ve caused problems. This project automates that end to end on AWS.",
-      "When an invoice lands in S3, an event triggers a Step Functions workflow that orchestrates the full lifecycle. First, an AI model extracts the structured fields: vendor, invoice number, dates, line items, tax and totals. The project benchmarks two extraction approaches side by side, Amazon Textract’s purpose-built document analysis and a Bedrock-hosted vision LLM. The comparison covers field-level accuracy, cost per invoice and latency on a labeled test set, so the choice of model is backed by data rather than assumption.",
-      "Extracted data is validated against a strict Pydantic schema and a set of business rules: required fields present, line items summing to the stated total, valid dates, and duplicate detection. Valid invoices are persisted to DynamoDB. Invoices that fail validation are routed to a review queue, with SNS alerts and a lightweight review interface where a human can correct and approve them. Technical failures, such as timeouts and throttling, are handled separately with retries and an SQS dead-letter queue, so no invoice is silently lost.",
-      "The pipeline is built for production realities: idempotent processing (a retried Lambda or a duplicate upload never creates duplicate records), least-privilege IAM per function, and full observability through CloudWatch dashboards and alarms. Processed data also flows into an S3 data lake cataloged with AWS Glue, queryable with SQL through Athena for spend analytics like spend per vendor, monthly trends and flagged-invoice rates.",
-      "The entire stack is defined as infrastructure as code with AWS CDK and deployed through a GitHub Actions CI/CD pipeline with automated tests. A load test of concurrent invoices measures throughput and cost at scale."
-    ],
+    tagline:"An AI pipeline that turns invoice PDFs and scans into validated, structured data, with a head-to-head benchmark of Claude on Amazon Bedrock and Amazon Textract across 60 clean and scanned documents.",
+    flow:["Invoice PDF / scan","Claude (Bedrock) vs Textract","Pydantic + business rules","Saved or human review"],
+    highlight:"Claude: <b>100%</b> field accuracy on clean invoices, <b>98.8%</b> vs Textract’s <b>87.8%</b> on scans, at <b>less than half the cost</b>.",
     results:[
-      {label:"Extraction accuracy: Textract", value:null},
-      {label:"Extraction accuracy: Bedrock vision", value:null},
-      {label:"Cost per invoice", value:null},
-      {label:"Throughput (invoices / min)", value:null}
+      {label:"Claude field accuracy, clean invoices", value:"100%"},
+      {label:"Scanned accuracy: Claude vs Textract", value:"98.8% vs 87.8%"},
+      {label:"Claude cost per invoice (Textract $0.01)", value:"$0.0045"},
+      {label:"Planted billing errors caught by Claude, clean set", value:"6/6"}
     ],
-    tags:["Python","Pydantic","AWS Lambda","Step Functions","Textract","Bedrock","DynamoDB","SQS","SNS","Glue","Athena","CloudWatch","AWS CDK","GitHub Actions","pytest"],
+    sections:[
+      {h:"How it works", html:`<ul class="pts">
+        <li><b>Ingest:</b> an invoice PDF or scan enters the pipeline.</li>
+        <li><b>Extract:</b> an AI model reads the document and returns structured JSON: invoice number, vendor, customer, dates, line items, subtotal, tax and total. Two engines were evaluated: Claude Haiku on Amazon Bedrock (a vision LLM using tool use for enforced structured output) and Amazon Textract AnalyzeExpense (a purpose-built document extraction service).</li>
+        <li><b>Validate:</b> a two-layer rules engine checks the extracted data. A Pydantic schema enforces structure and types. Business rules check that each line’s quantity × unit price equals its amount, that line items sum to the subtotal, that subtotal + tax equals the total, and that dates are valid (not in the future, due date after invoice date).</li>
+        <li><b>Route:</b> valid invoices are saved. Invoices with problems go to human review, each with machine-readable issue codes (e.g. TOTAL_MISMATCH) and human-readable explanations.</li>
+      </ul>`},
+      {h:"How the benchmark works", html:`<ul class="pts">
+        <li><b>Dataset:</b> 30 synthetic invoices across 3 layouts with different wording (“Invoice #” vs “Bill No.”, “Total” vs “Balance Due”), each with a ground-truth answer key. 20% contain planted billing errors (wrong line math, subtotal or total mismatches, due date before invoice date).</li>
+        <li><b>Scan simulation:</b> each invoice was also degraded into a “scanned” copy at three severity levels (light, medium, heavy) using tilt, blur, resolution loss, noise, faded contrast, uneven lighting and JPEG compression. That gives 60 test documents in total.</li>
+        <li><b>Evaluation harness:</b> both engines read the same 60 documents. The harness grades two stages against the answer keys:
+          <ul>
+            <li><b>Extraction accuracy:</b> every extracted field is compared with ground truth after normalization (dates, currency formats, whitespace), reported overall and by field type, layout and scan severity.</li>
+            <li><b>Validation accuracy:</b> the validator’s verdict on each invoice is compared with the expected issues, measuring planted errors caught, errors missed, false alarms caused by AI misreads, and invented or dropped line items.</li>
+          </ul>
+        </li>
+        <li><b>Scoring rules</b> (applied identically to both engines): names, addresses and descriptions are compared ignoring case and punctuation. Invoice numbers must match exactly.</li>
+      </ul>`},
+      {h:"Results", html:`<h4>Clean invoices (30)</h4>
+        <div class="tbl-wrap"><table class="mtable">
+          <tr><th>Metric</th><th>Claude (Bedrock)</th><th>Textract</th></tr>
+          <tr><td>Field accuracy</td><td class="win">100%</td><td>93.5%</td></tr>
+          <tr><td>Perfect invoices</td><td class="win">30/30</td><td>0/30</td></tr>
+          <tr><td>Money fields</td><td>100%</td><td>100%</td></tr>
+          <tr><td>Planted errors caught</td><td class="win">6/6</td><td>5/6</td></tr>
+          <tr><td>Cost per invoice</td><td class="win">$0.0045</td><td>$0.01</td></tr>
+          <tr><td>Avg latency</td><td>2.0s</td><td class="win">1.8s</td></tr>
+        </table></div>
+        <h4>Scanned invoices (30: 10 light, 10 medium, 10 heavy)</h4>
+        <div class="tbl-wrap"><table class="mtable">
+          <tr><th>Metric</th><th>Claude (Bedrock)</th><th>Textract</th></tr>
+          <tr><td>Field accuracy</td><td class="win">98.8%</td><td>87.8%</td></tr>
+          <tr><td>Heavy scans</td><td class="win">96.6%</td><td>83.8%</td></tr>
+          <tr><td>Perfect invoices</td><td class="win">27/30</td><td>0/30</td></tr>
+          <tr><td>Planted errors missed</td><td class="win">0</td><td>2</td></tr>
+          <tr><td>False alarms</td><td class="win">1</td><td>7*</td></tr>
+          <tr><td>Wrong line-item count</td><td class="win">1</td><td>2</td></tr>
+          <tr><td>Cost per invoice</td><td class="win">$0.0046</td><td>$0.01</td></tr>
+          <tr><td>Avg latency</td><td>2.5s</td><td class="win">2.3s</td></tr>
+        </table></div>
+        <p class="note">* 5 of Textract’s scanned false alarms came from my own date parser being too strict (it rejected dates like “Jun 27. 2026”), not from Textract. A fix is in progress and these numbers will be updated.</p>`},
+      {h:"Key findings", html:`<ul class="pts">
+        <li>Claude on Bedrock was more accurate and less than half the cost, and it degraded more gracefully on poor-quality scans (98.8% vs 87.8%).</li>
+        <li>Textract excels at reading numbers (100% on money fields for clean invoices) but struggles with document semantics: it consistently merged the vendor name into the address, missed due dates under non-standard labels like “Pay By,” and on tilted scans scrambled word order (“Office Supply Northwind”) and dropped or shifted line items.</li>
+        <li>Validation acts as a safety net for AI misreads. When a misread breaks the arithmetic, the invoice is routed to human review instead of being stored with wrong data. But misreads that don’t affect the math (e.g. a customer name read as “Onon” instead of “Orion”) pass validation silently, and only the evaluation harness exposes them. That motivates safeguards like matching names against a known vendor/customer list.</li>
+        <li>Failure modes surfaced by evaluation: digit misreads (8 → 6 on a heavy scan), a hallucinated line item created from the subtotal row, and a planted billing error missed because the due date wasn’t extracted.</li>
+      </ul>`}
+    ],
+    desc:[],
+    tags:["Python","Amazon Bedrock (Claude Haiku)","Amazon Textract","Pydantic","pytest","PyMuPDF","Pillow","NumPy"],
     github:"https://github.com/Abdul-Omer-CAN", demo:""
   },
   {
@@ -505,7 +562,7 @@ function render(filter){
         <div class="proj-cat">${catLabel(p)}</div>
         <h3>${p.title}</h3>
         <p class="proj-tagline">${p.tagline}</p>
-        ${filled(p).length ? `<div class="impact">${filled(p).map(r=>`<b>${r.value}</b> ${r.label.toLowerCase()}`).join(' · ')}</div>` : ''}
+        ${p.highlight ? `<div class="impact">${p.highlight}</div>` : filled(p).length ? `<div class="impact">${filled(p).map(r=>`<b>${r.value}</b> ${r.label.toLowerCase()}`).join(' · ')}</div>` : ''}
         <div class="tags">${p.tags.slice(0,7).map(t=>`<span class="tag">${t}</span>`).join('')}${p.tags.length>7?`<span class="tag">+${p.tags.length-7}</span>`:''}</div>
         <div class="proj-links">
           <button class="more-btn" data-i="${projects.indexOf(p)}">Read case study →</button>
@@ -525,9 +582,11 @@ function openModal(i){
     <h3>${p.title}</h3>
     <p class="tagline">${p.tagline}</p>
     ${flowHTML(p.flow)}
+    ${p.sections ? `${f.length ? `<h5>Key results</h5><div class="results">${f.map(r=>`<div class="result"><b>${r.value}</b><span>${r.label}</span></div>`).join('')}</div>` : ''}
+      ${p.sections.map(x=>`<h5>${x.h}</h5><div class="desc">${x.html}</div>`).join('')}` : `
     <h5>Overview</h5>
-    <div class="desc">${p.desc.map(d=>`<p>${d}</p>`).join('')}</div>
-    ${p.results.length ? `<h5>Key results</h5>${f.length
+    <div class="desc">${p.desc.map(d=>`<p>${d}</p>`).join('')}</div>`}
+    ${p.results.length && !p.sections ? `<h5>Key results</h5>${f.length
       ? `<div class="results">${f.map(r=>`<div class="result"><b>${r.value}</b><span>${r.label}</span></div>`).join('')}</div>`
       : `<p style="color:var(--muted)">Benchmarks in progress. Results will be published here.</p>`}` : ''}
     <h5>Stack</h5>
