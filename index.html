@@ -129,13 +129,16 @@
   .modal ul.pts ul{margin-top:8px;padding-left:18px;display:grid;gap:8px}
   .tbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;margin:4px 0 6px}
   .mtable{width:100%;border-collapse:collapse;font-size:.9rem}
-  @media (max-width:600px){.mtable{font-size:.8rem}.mtable th,.mtable td{padding:9px 8px}.mtable th{font-size:.62rem;letter-spacing:.06em}}
+  @media (max-width:600px){.mtable{font-size:.72rem}.mtable th,.mtable td{padding:8px 5px}.mtable th{font-size:.56rem;letter-spacing:.02em}.mtable td:first-child,.mtable th:first-child{padding-left:7px}.mtable td:last-child,.mtable th:last-child{padding-right:7px}.hm{display:none}.mtable th{font-size:.56rem;letter-spacing:0}.modal{padding:16px 6px !important}.modal-box{padding:28px 14px !important}}
   .mtable th,.mtable td{padding:10px 14px;text-align:left;border-bottom:1px solid var(--line)}
   .mtable tr:last-child td{border-bottom:0}
   .mtable th{background:var(--bg2);font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600}
   .mtable td:first-child{color:#cfd6e2}
   .mtable td:not(:first-child),.mtable th:not(:first-child){text-align:right;font-variant-numeric:tabular-nums}
   .mtable .win{color:var(--green, #34d27b);font-weight:600}
+  .status-line{font-size:.88rem;color:#cfd6e2;background:rgba(52,210,123,.07);border:1px solid rgba(52,210,123,.3);border-radius:10px;padding:10px 14px;margin:0 0 16px}
+  .status-line b{color:#5ee28f}
+  .proj .status-line{font-size:.8rem;padding:8px 12px;margin:-2px 0 14px}
   .note{font-size:.84rem;color:var(--muted);border-left:2px solid #ffb84d;padding:8px 12px;background:rgba(255,184,77,.06);border-radius:0 8px 8px 0;margin-top:10px}
   .proj{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;display:flex;flex-direction:column;transition:.3s}
   .proj:hover{transform:translateY(-6px);border-color:#3a4558;box-shadow:0 20px 50px rgba(0,0,0,.35)}
@@ -446,14 +449,16 @@ const projects = [
   },
   {
     num:"02", cats:["sde","ml"], title:"Intelligent Invoice Processing Pipeline",
+    badge:"Milestone 1 complete",
+    statusLine:"<b>Status:</b> Milestone 1 (local pipeline and engine benchmark) complete. Next: deploying the pipeline on AWS (S3, Lambda, Step Functions, DynamoDB, defined with AWS CDK).",
     tagline:"An AI pipeline that turns invoice PDFs and scans into validated, structured data, with a head-to-head benchmark of Claude on Amazon Bedrock and Amazon Textract across 60 clean and scanned documents.",
     flow:["Invoice PDF / scan","Claude (Bedrock) vs Textract","Pydantic + business rules","Saved or human review"],
-    highlight:"Claude: <b>100%</b> field accuracy on clean invoices, <b>98.8%</b> vs Textract’s <b>87.8%</b> on scans, at <b>less than half the cost</b>.",
+    highlight:"Claude: <b>100%</b> field accuracy on clean invoices and <b>98.8%</b> vs Textract v2’s <b>95.2%</b> on scans, at <b>less than half the cost</b>. Selected as the production engine.",
     results:[
       {label:"Claude field accuracy, clean invoices", value:"100%"},
-      {label:"Scanned accuracy: Claude vs Textract", value:"98.8% vs 87.8%"},
-      {label:"Claude cost per invoice (Textract $0.01)", value:"$0.0045"},
-      {label:"Planted billing errors caught by Claude, clean set", value:"6/6"}
+      {label:"Scanned accuracy: Claude vs Textract v2", value:"98.8% vs 95.2%"},
+      {label:"Cost per invoice: Claude vs Textract", value:"$0.0045 vs $0.01"},
+      {label:"Textract clean accuracy, v1 to v2, from integration fixes alone", value:"93.5% → 99.8%"}
     ],
     sections:[
       {h:"How it works", html:`<ul class="pts">
@@ -472,39 +477,51 @@ const projects = [
           </ul>
         </li>
         <li><b>Scoring rules</b> (applied identically to both engines): names, addresses and descriptions are compared ignoring case and punctuation. Invoice numbers must match exactly.</li>
+        <li><b>Textract versions:</b> Two versions of the Textract integration were tested. Textract v1 is a straightforward mapping of Textract’s fields to the invoice format. Textract v2 adds two documented fixes for Textract’s consistent quirks: it uses Textract’s vendor grouping to separate the vendor name from the address, and reads due dates from printed labels like “Pay By,” excluding amount labels such as “Balance Due.” Comparing v1 and v2 separates how much of Textract’s gap came from the engine itself versus the integration code around it.</li>
       </ul>`},
       {h:"Results", html:`<h4>Clean invoices (30)</h4>
         <div class="tbl-wrap"><table class="mtable">
-          <tr><th>Metric</th><th>Claude (Bedrock)</th><th>Textract</th></tr>
-          <tr><td>Field accuracy</td><td class="win">100%</td><td>93.5%</td></tr>
-          <tr><td>Perfect invoices</td><td class="win">30/30</td><td>0/30</td></tr>
-          <tr><td>Money fields</td><td>100%</td><td>100%</td></tr>
-          <tr><td>Planted errors caught</td><td class="win">6/6</td><td>5/6</td></tr>
-          <tr><td>Cost per invoice</td><td class="win">$0.0045</td><td>$0.01</td></tr>
-          <tr><td>Avg latency</td><td>2.0s</td><td class="win">1.8s</td></tr>
+          <tr><th>Metric</th><th>Claude<span class="hm"> (Bedrock)</span></th><th>Textract v1</th><th>Textract v2</th></tr>
+          <tr><td>Field accuracy</td><td class="win">100%</td><td>93.5%</td><td>99.8%</td></tr>
+          <tr><td>Perfect invoices</td><td class="win">30/30</td><td>0/30</td><td>29/30</td></tr>
+          <tr><td>Money fields</td><td>100%</td><td>100%</td><td>100%</td></tr>
+          <tr><td>Planted errors missed</td><td class="win">0</td><td>1</td><td class="win">0</td></tr>
+          <tr><td>False alarms</td><td>0</td><td>0</td><td>0</td></tr>
+          <tr><td>Cost per invoice</td><td class="win">$0.0045</td><td>$0.01</td><td>$0.01</td></tr>
+          <tr><td>Avg latency</td><td>2.0s</td><td class="win">1.8s</td><td class="win">1.8s</td></tr>
         </table></div>
         <h4>Scanned invoices (30: 10 light, 10 medium, 10 heavy)</h4>
         <div class="tbl-wrap"><table class="mtable">
-          <tr><th>Metric</th><th>Claude (Bedrock)</th><th>Textract</th></tr>
-          <tr><td>Field accuracy</td><td class="win">98.8%</td><td>87.8%</td></tr>
-          <tr><td>Heavy scans</td><td class="win">96.6%</td><td>83.8%</td></tr>
-          <tr><td>Perfect invoices</td><td class="win">27/30</td><td>0/30</td></tr>
-          <tr><td>Planted errors missed</td><td class="win">0</td><td>2</td></tr>
-          <tr><td>False alarms</td><td class="win">1</td><td>7*</td></tr>
-          <tr><td>Wrong line-item count</td><td class="win">1</td><td>2</td></tr>
-          <tr><td>Cost per invoice</td><td class="win">$0.0046</td><td>$0.01</td></tr>
-          <tr><td>Avg latency</td><td>2.5s</td><td class="win">2.3s</td></tr>
-        </table></div>
-        <p class="note">* 5 of Textract’s scanned false alarms came from my own date parser being too strict (it rejected dates like “Jun 27. 2026”), not from Textract. A fix is in progress and these numbers will be updated.</p>`},
+          <tr><th>Metric</th><th>Claude<span class="hm"> (Bedrock)</span></th><th>Textract v1</th><th>Textract v2</th></tr>
+          <tr><td>Field accuracy</td><td class="win">98.8%</td><td>89.0%</td><td>95.2%</td></tr>
+          <tr><td>Light / medium / heavy scans</td><td class="win">100 / 100 / 96.6%</td><td>93.5 / 87.8 / 85.8%</td><td>100 / 93.9 / 91.7%</td></tr>
+          <tr><td>Perfect invoices</td><td class="win">27/30</td><td>0/30</td><td>22/30</td></tr>
+          <tr><td>Wrong line-item count</td><td class="win">1</td><td>2</td><td>2</td></tr>
+          <tr><td>Planted errors missed</td><td class="win">0</td><td>1</td><td class="win">0</td></tr>
+          <tr><td>False alarms</td><td class="win">1</td><td>3</td><td>3</td></tr>
+          <tr><td>Cost per invoice</td><td class="win">$0.0046</td><td>$0.01</td><td>$0.01</td></tr>
+          <tr><td>Avg latency</td><td>2.5s</td><td class="win">2.3s</td><td class="win">2.3s</td></tr>
+        </table></div>`},
       {h:"Key findings", html:`<ul class="pts">
-        <li>Claude on Bedrock was more accurate and less than half the cost, and it degraded more gracefully on poor-quality scans (98.8% vs 87.8%).</li>
-        <li>Textract excels at reading numbers (100% on money fields for clean invoices) but struggles with document semantics: it consistently merged the vendor name into the address, missed due dates under non-standard labels like “Pay By,” and on tilted scans scrambled word order (“Office Supply Northwind”) and dropped or shifted line items.</li>
-        <li>Validation acts as a safety net for AI misreads. When a misread breaks the arithmetic, the invoice is routed to human review instead of being stored with wrong data. But misreads that don’t affect the math (e.g. a customer name read as “Onon” instead of “Orion”) pass validation silently, and only the evaluation harness exposes them. That motivates safeguards like matching names against a known vendor/customer list.</li>
-        <li>Failure modes surfaced by evaluation: digit misreads (8 → 6 on a heavy scan), a hallucinated line item created from the subtotal row, and a planted billing error missed because the due date wasn’t extracted.</li>
+        <li>On clean invoices, most of Textract’s gap was integration code, not the engine. Better mapping took Textract from 93.5% to 99.8% field accuracy, nearly tied with Claude.</li>
+        <li>On degraded scans, Claude stays clearly ahead: 98.8% vs 95.2% overall, and 96.6% vs 91.7% on heavy scans. Textract’s remaining errors are reading failures that no mapping can fix: scrambled word order on tilted scans (“Ltd. Orion Engineering”), dropped or shifted line items, and reading the table header “Description” as a product.</li>
+        <li>Claude costs less than half as much per invoice ($0.0045 vs $0.01). Claude on Bedrock was selected as the production engine, based on measured accuracy, cost and failure behavior rather than assumption.</li>
+        <li>Validation acts as a safety net for AI misreads. When a misread breaks the arithmetic (Claude read $966.84 as $966.64 on a heavy scan), the invoice goes to human review instead of being stored with wrong data. But misreads that don’t affect the math pass silently (a customer “Orion” read as “Onon”), and only the evaluation harness exposes them. That motivates future safeguards like matching names against a known vendor/customer list.</li>
+        <li>Failure modes surfaced by evaluation: digit misreads, a hallucinated line item (Claude turned the subtotal row into a fake product on a heavy scan), and a planted billing error missed because the due date wasn’t extracted (Textract v1, fixed in v2).</li>
+      </ul>`},
+      {h:"Caveats", html:`<ul class="pts">
+        <li><b>Small dataset:</b> 30 invoices per condition, so single errors move the percentages noticeably.</li>
+        <li><b>Synthetic documents:</b> real invoices are messier. The scan simulator narrows that gap but doesn’t close it.</li>
+        <li><b>Tuned on the test set:</b> the Textract v2 fixes were developed while looking at the same 60 documents used for scoring, so v2’s scores are somewhat optimistic. The proper next step is a separate held-out dataset, keeping tuning data apart from reporting data.</li>
+      </ul>`},
+      {h:"Engineering notes", html:`<ul class="pts">
+        <li><b>Raw API responses are saved,</b> so integration changes can be re-scored with no new API calls, at zero cost. This caught a real bug: the first version of the due-date rule matched “Balance Due” (it contains the word “due”) and turned invoice totals into due dates, causing 11 false alarms. The harness flagged it immediately, the saved raw responses showed exactly why, and re-scoring the fix cost nothing.</li>
+        <li><b>Cost controls:</b> extraction skips documents already processed, so re-runs never pay twice, and an AWS Budgets action automatically blocks the AI services if monthly spend passes $1. Total AI spend for the whole benchmark was about $1.50.</li>
+        <li><b>Testing:</b> 36 automated tests (pytest), including tests that plant specific errors and confirm the validator and the evaluation harness catch them.</li>
       </ul>`}
     ],
     desc:[],
-    tags:["Python","Amazon Bedrock (Claude Haiku)","Amazon Textract","Pydantic","pytest","PyMuPDF","Pillow","NumPy"],
+    tags:["Python","Amazon Bedrock (Claude Haiku)","Amazon Textract","Pydantic","pytest","PyMuPDF","Pillow","NumPy","AWS Budgets / IAM"],
     github:"https://github.com/Abdul-Omer-CAN", demo:""
   },
   {
@@ -551,7 +568,7 @@ const filled = p => p.results.filter(r => r.value);
 const catLabel = p => p.cats.map(c => c==='ml' ? 'AI / ML' : 'Software Eng').join(' · ');
 const flowHTML = f => `<div class="flow">${f.map(n=>`<span class="n">${n}</span>`).join('<span class="a">→</span>')}</div>`;
 const projLinks = p => `${p.github ? `<a href="${p.github}" target="_blank">${ghIcon} Code</a>` : ''}${p.demo ? `<a href="${p.demo}" target="_blank">↗ Live demo</a>` : ''}`;
-const badge = p => p.status==='Active' ? '<span class="badge live">Active</span>'
+const badge = p => p.badge ? `<span class="badge live">${p.badge}</span>` : p.status==='Active' ? '<span class="badge live">Active</span>'
   : (p.results.length && !filled(p).length ? '<span class="badge">In progress</span>' : '');
 
 function render(filter){
@@ -561,6 +578,7 @@ function render(filter){
       <div class="proj-body">
         <div class="proj-cat">${catLabel(p)}</div>
         <h3>${p.title}</h3>
+        ${p.statusLine ? `<div class="status-line">${p.statusLine}</div>` : ''}
         <p class="proj-tagline">${p.tagline}</p>
         ${p.highlight ? `<div class="impact">${p.highlight}</div>` : filled(p).length ? `<div class="impact">${filled(p).map(r=>`<b>${r.value}</b> ${r.label.toLowerCase()}`).join(' · ')}</div>` : ''}
         <div class="tags">${p.tags.slice(0,7).map(t=>`<span class="tag">${t}</span>`).join('')}${p.tags.length>7?`<span class="tag">+${p.tags.length-7}</span>`:''}</div>
@@ -580,6 +598,7 @@ function openModal(i){
     <button class="modal-close" aria-label="Close">×</button>
     <div class="proj-cat">${p.num} · ${catLabel(p)}</div>
     <h3>${p.title}</h3>
+    ${p.statusLine ? `<div class="status-line">${p.statusLine}</div>` : ''}
     <p class="tagline">${p.tagline}</p>
     ${flowHTML(p.flow)}
     ${p.sections ? `${f.length ? `<h5>Key results</h5><div class="results">${f.map(r=>`<div class="result"><b>${r.value}</b><span>${r.label}</span></div>`).join('')}</div>` : ''}
